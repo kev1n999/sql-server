@@ -6,7 +6,11 @@ export const TOKEN_KIND = {
     WHERE: "WHERE",
     FROM: "FROM",
     CREATE: "CREATE",
+    INSERT: "INSERT",
+    INTO: "INTO",
+    EQUALS: "EQUALS",
     SEMICOLON: "SEMICOLON",
+    INT: 'INT',
     STAR: "STAR",
     IDENTIFIER: "IDENTIFIER",
     EOF: "EOF",
@@ -50,12 +54,17 @@ export default class Lexer implements ILexer {
     }
 
     private isKeyword(kind: TokenKind): boolean {
-        return kind === "CREATE"    ||
-               kind === "SELECT"    ||
-               kind === "FROM"      ||
-               kind === "SEMICOLON" ||
-               kind === "WHERE"     ||
-               kind === "STAR"      ||
+        return kind === "CREATE"     ||
+               kind === "SELECT"     ||
+               kind === "FROM"       ||
+               kind === "SEMICOLON"  ||
+               kind === "WHERE"      ||
+               kind === "STAR"       ||
+               kind === "INSERT"     ||
+               kind === "IDENTIFIER" ||
+               kind === "INTO"       ||
+               kind === "EQUALS"     ||
+               kind === 'INT'        ||
                kind === "EOF";
     }
     
@@ -63,7 +72,7 @@ export default class Lexer implements ILexer {
         return original === expected;
     }
 
-    private kindTokenizer<T extends TokenKind>(kind: T): Token | void {
+    private kindTokenizer<T extends TokenKind>(kind: T): Token {
         let current = this.getCurrent();
 
         let lexeme = "" as unknown as TokenKind;
@@ -104,7 +113,31 @@ export default class Lexer implements ILexer {
         return { kind, lexeme, };
     }
 
-    public lexer(): Token | void {
+    private intTokenizer(): Token {
+        let value = "";
+        let current = this.getCurrent();
+
+        while (this.cursor < this.inputSize) {
+            if (current === '.' && value.charAt(value.length-1).trim() === '.') {
+                this.advanceCursor();
+            } else {
+                value += current;
+                this.advanceCursor();
+            }
+
+            current = this.getCurrent();
+
+            while (!isNaN(Number(current))) {
+                value += current;
+                this.advanceCursor();
+                current = this.getCurrent();
+            }
+        }
+
+        return { kind: 'INT', lexeme: value, };
+    }
+
+    public lexer(): Token {
         this.ignoreWhitespaces();
 
         let current = this.getCurrent() as string;
@@ -116,6 +149,10 @@ export default class Lexer implements ILexer {
                 return this.identifierTokenizer();
             }
 
+            if (/^[0-9]+$/.test(current)) {
+                return this.intTokenizer();
+            }
+
             switch (current) {
                 case 'S':
                     return this.kindTokenizer<'SELECT'>('SELECT');
@@ -123,6 +160,12 @@ export default class Lexer implements ILexer {
                     return this.kindTokenizer<'FROM'>('FROM');
                 case 'C':
                     return this.kindTokenizer<'CREATE'>('CREATE');
+                case 'I':
+                    return this.kindTokenizer<'INTO' | 'INSERT'>('INTO');
+                case '=':
+                    token = { kind: 'EQUALS', lexeme : '=', };
+                    this.advanceCursor();
+                    return token;
                 case '*':
                     token = { kind: 'STAR', lexeme: '*', };
                     this.advanceCursor();
@@ -135,5 +178,7 @@ export default class Lexer implements ILexer {
                     return { kind: 'EOF', lexeme: '', };
             }
         }
+
+        return { kind: 'EOF', lexeme: '', };
     }
 }

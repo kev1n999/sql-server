@@ -1,9 +1,11 @@
 import Lexer from './lexer';
 
-const lexer = new Lexer('SELECT * FROM DATABASE;');
+const lexer = new Lexer('select * from users where username = cookie;');
 
-console.log(lexer.lexer());
-console.log(lexer.lexer());
-console.log(lexer.lexer());
-console.log(lexer.lexer());
-console.log(lexer.lexer());
+while (lexer.cursor < lexer.input!.length) {
+    const next = lexer.lexer();
+
+    if (next.kind === 'EOF' || next.kind === 'SEMICOLON') break;
+
+    console.log(next);
+}

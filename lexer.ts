@@ -7,6 +7,10 @@ export const TOKEN_KIND = {
     FROM: "FROM",
     CREATE: "CREATE",
     INSERT: "INSERT",
+    UPDATE: 'UPDATE',
+    SET: 'SET',
+    COMMA: 'COMMA',
+    STRING: 'STRING',
     INTO: "INTO",
     EQUALS: "EQUALS",
     SEMICOLON: "SEMICOLON",
@@ -65,6 +69,10 @@ export default class Lexer implements ILexer {
                kind === "INTO"       ||
                kind === "EQUALS"     ||
                kind === 'INT'        ||
+               kind === 'COMMA'      ||
+               kind === 'SET'        ||
+               kind === 'UPDATE'     ||
+               kind === 'STRING'     ||
                kind === "EOF";
     }
     
@@ -127,14 +135,38 @@ export default class Lexer implements ILexer {
 
             current = this.getCurrent();
 
-            while (!isNaN(Number(current))) {
+            if (!isNaN(Number(current?.trim()))) {
                 value += current;
                 this.advanceCursor();
                 current = this.getCurrent();
+            } else {
+                break;
             }
         }
 
         return { kind: 'INT', lexeme: value, };
+    }
+
+    private stringTokenizer(): Token {
+        let value = "";
+        let current = this.getCurrent();
+
+        this.advanceCursor();
+        current = this.getCurrent();
+
+        while (current !== undefined && current !== '"') {
+            value += current;
+            this.advanceCursor();
+            current = this.getCurrent();
+        }
+
+        if (current === undefined) {
+            throw new LexerError({ kind: 'SYNTAX_ERROR', description: 'Undetermined string literal', });
+        }
+
+        this.advanceCursor();
+
+        return { kind: 'STRING', lexeme: value, };
     }
 
     public lexer(): Token {
@@ -162,12 +194,22 @@ export default class Lexer implements ILexer {
                     return this.kindTokenizer<'CREATE'>('CREATE');
                 case 'I':
                     return this.kindTokenizer<'INTO' | 'INSERT'>('INTO');
+                case 'U':
+                    return this.kindTokenizer<'UPDATE'>('UPDATE');
+                case 'S':
+                    return this.kindTokenizer<'SET'>('SET');
+                case '"':
+                    return this.stringTokenizer();
                 case '=':
                     token = { kind: 'EQUALS', lexeme : '=', };
                     this.advanceCursor();
                     return token;
                 case '*':
                     token = { kind: 'STAR', lexeme: '*', };
+                    this.advanceCursor();
+                    return token;
+                case ',':
+                    token = { kind: 'COMMA', lexeme: ',', };
                     this.advanceCursor();
                     return token;
                 case ';':
